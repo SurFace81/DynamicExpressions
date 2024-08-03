@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using System.ComponentModel;
 
 namespace Dynamic_If
 {
@@ -15,9 +16,10 @@ namespace Dynamic_If
 
         public DynamicExpressions(PropertySelector<T> ps) { _propSelector = ps; }
 
-        public List<T> Evaluate(List<T> data, string filterExpression)
+        public BindingList<T> Evaluate(BindingList<T> data, string filterExpression)
         {
-            return data.Where(data => EvaluateExpression(data, filterExpression)).ToList();
+            List<T> temp = data.ToList();
+            return new BindingList<T>(temp.Where(temp => EvaluateExpression(temp, filterExpression)).ToList());
         }
 
         private bool EvaluateExpression(T data, string expression)
