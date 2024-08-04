@@ -1,9 +1,8 @@
 ﻿using DataGridViewAutoFilter;
 using System;
+using System.Collections.Generic;
 using System.ComponentModel;
-using System.Data.Common;
 using System.Linq;
-using System.Text.RegularExpressions;
 using System.Windows.Forms;
 
 namespace Dynamic_If
@@ -11,20 +10,23 @@ namespace Dynamic_If
     public partial class Form1 : Form
     {
         BindingList<Data> data;
+
         public Form1()
         {
             InitializeComponent();
 
             data = new BindingList<Data>
             {
-                new Data (1, 220, 23.5f, (UInt16)34, "test1"),
-                new Data (2, 220, -34.2f, (UInt16)45, "test2"),
-                new Data (3, 220, 67.3f, (UInt16)56, "test3"),
-                new Data (4, 220, 45.1f, (UInt16)67, "test4"),
-                new Data (5, 220, 56.7f, (UInt16)78, "test5"),
-                new Data (6, 220, 78.8f, (UInt16)89, "test6"),
-                new Data (7, 220, 89.9f, (UInt16)90, "test7"),
-                new Data (8, 220, 90.0f, (UInt16)91, "test8")
+                new Data(1, 100, 23.5f, (UInt16)34, "test1"),
+                new Data(2, 200, -23.5f, (UInt16)45, "test2"),
+                new Data(3, 100, 45.1f, (UInt16)56, "test3"),
+                new Data(4, 200, 67.3f, (UInt16)67, "test4"),
+                new Data(5, 100, 56.7f, (UInt16)78, "test5"),
+                new Data(6, 200, 45.1f, (UInt16)89, "test6"),
+                new Data(7, 100, 89.9f, (UInt16)90, "test7"),
+                new Data(8, 200, 78.8f, (UInt16)91, "test8"),
+                new Data(9, 250, 23.5f, (UInt16)34, "test9"),
+                new Data(10, 250, 89.9f, (UInt16)90, "test10")
             };
 
             dataGridView.DataSource = data;
@@ -33,92 +35,97 @@ namespace Dynamic_If
             dataGridView.Update();
         }
 
-        private Dictionary<int, int> HEADER_CLICK_CNTR = new Dictionary<int, int>();
+        private List<(int columnIndex, SortOrder sortOrder)> sortOrders = new List<(int columnIndex, SortOrder sortOrder)>();
+
         private void DataGridView_ColumnHeaderMouseClick(object? sender, DataGridViewCellMouseEventArgs e)
         {
-            if (!HEADER_CLICK_CNTR.ContainsKey(int.Parse(e.ColumnIndex.ToString())))
-            {
-                HEADER_CLICK_CNTR.Add(int.Parse(e.ColumnIndex.ToString()), 0);
-            }
-
             var column = dataGridView.Columns[e.ColumnIndex];
-            SortOrder order = SortOrder.None;
-            switch (HEADER_CLICK_CNTR[int.Parse(e.ColumnIndex.ToString())] % 3)
+
+            var existingSortOrder = sortOrders.FirstOrDefault(so => so.columnIndex == e.ColumnIndex);
+            SortOrder newOrder = SortOrder.Ascending;
+            if (existingSortOrder.sortOrder == SortOrder.Ascending)
             {
-                case 0:
-                    order = SortOrder.Ascending;
-                    break;
-                case 1:
-                    order = SortOrder.Descending;
-                    break;
-                case 2:
-                    order = SortOrder.None;
-                    break;
+                newOrder = SortOrder.Descending;
+            }
+            else if (existingSortOrder.sortOrder == SortOrder.Descending)
+            {
+                newOrder = SortOrder.None;
             }
 
-            SortRows(column.Name, order);
-            UpdateColumnHeader(column, order);
+            if (newOrder == SortOrder.None)
+            {
+                sortOrders.Remove(existingSortOrder);
+            }
+            else
+            {
+                if (existingSortOrder.sortOrder == SortOrder.None)
+                {
+                    sortOrders.Add((e.ColumnIndex, newOrder));
+                }
+                else
+                {
+                    var index = sortOrders.FindIndex(so => so.columnIndex == e.ColumnIndex);
+                    sortOrders[index] = (e.ColumnIndex, newOrder);
+                }
+            }
 
-            HEADER_CLICK_CNTR[int.Parse(e.ColumnIndex.ToString())] += 1;
+            SortRows();
+            UpdateColumnHeaders();
         }
 
-        private void SortRows(string columnName, SortOrder order)
+        private void SortRows()
         {
-            if (order == SortOrder.None)
-            {
-                dataGridView.DataSource = data;
-                ClearColumnHeaders();
-                return;
-            }                
+            IOrderedEnumerable<Data>? sortedData = null;
 
-            List<Data> tempList = data.ToList();
-            switch (columnName)
+            foreach (var sortOrder in sortOrders)
             {
-                case "a":
-                    tempList = order == SortOrder.Ascending ? data.OrderBy(d => d.a).ToList() : data.OrderByDescending(d => d.a).ToList();
-                    break;
-                case "b":
-                    tempList = order == SortOrder.Ascending ? data.OrderBy(d => d.b).ToList() : data.OrderByDescending(d => d.b).ToList();
-                    break;
-                case "c":
-                    tempList = order == SortOrder.Ascending ? data.OrderBy(d => d.c).ToList() : data.OrderByDescending(d => d.c).ToList();
-                    break;
-                case "d":
-                    tempList = order == SortOrder.Ascending ? data.OrderBy(d => d.d).ToList() : data.OrderByDescending(d => d.d).ToList();
-                    break;
-                case "e":
-                    tempList = order == SortOrder.Ascending ? data.OrderBy(d => d.e).ToList() : data.OrderByDescending(d => d.e).ToList();
-                    break;
+                var columnName = dataGridView.Columns[sortOrder.columnIndex].Name;
+                var currentSorting = sortOrder.sortOrder;
+
+                switch (columnName)
+                {
+                    case "a":
+                        sortedData = Sort(sortedData, d => d.a, currentSorting);
+                        break;
+                    case "b":
+                        sortedData = Sort(sortedData, d => d.b, currentSorting);
+                        break;
+                    case "c":
+                        sortedData = Sort(sortedData, d => d.c, currentSorting);
+                        break;
+                    case "d":
+                        sortedData = Sort(sortedData, d => d.d, currentSorting);
+                        break;
+                    case "e":
+                        sortedData = Sort(sortedData, d => d.e, currentSorting);
+                        break;
+                }
             }
 
-            dataGridView.DataSource = new BindingList<Data>(tempList);
+            dataGridView.DataSource = new BindingList<Data>(sortedData?.ToList() ?? data.ToList());
         }
 
-        private void UpdateColumnHeader(DataGridViewColumn column, SortOrder sortOrder)
+        private IOrderedEnumerable<Data> Sort(IOrderedEnumerable<Data>? sortedData, Func<Data, object> func, SortOrder currentSorting)
         {
-            if (column.HeaderText.EndsWith(" ▲") || column.HeaderText.EndsWith(" ▼"))
-            {
-                column.HeaderText = column.HeaderText.Substring(0, column.HeaderText.Length - 2);
-            }
-
-            if (sortOrder == SortOrder.Ascending)
-            {
-                column.HeaderText += " ▲";
-            }
-            else if (sortOrder == SortOrder.Descending)
-            {
-                column.HeaderText += " ▼";
-            }
+            return sortedData == null
+                        ? currentSorting == SortOrder.Ascending
+                            ? data.OrderBy(func)
+                            : data.OrderByDescending(func)
+                        : currentSorting == SortOrder.Ascending
+                            ? sortedData.ThenBy(func)
+                            : sortedData.ThenByDescending(func);
         }
 
-        private void ClearColumnHeaders()
+        private void UpdateColumnHeaders()
         {
             foreach (DataGridViewColumn column in dataGridView.Columns)
             {
-                if (column.HeaderText.EndsWith(" ▲") || column.HeaderText.EndsWith(" ▼"))
-                {
-                    column.HeaderText = column.HeaderText.Substring(0, column.HeaderText.Length - 2);
-                }
+                column.HeaderCell.SortGlyphDirection = SortOrder.None;
+            }
+
+            foreach (var sortOrder in sortOrders)
+            {
+                dataGridView.Columns[sortOrder.columnIndex].HeaderCell.SortGlyphDirection = sortOrder.sortOrder;
             }
         }
 
