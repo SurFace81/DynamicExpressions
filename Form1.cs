@@ -10,7 +10,7 @@ namespace Dynamic_If
     public partial class Form1 : Form
     {
         BindingList<Data> data;
-
+        
         public Form1()
         {
             InitializeComponent();
@@ -134,7 +134,12 @@ namespace Dynamic_If
         private void expressionText_KeyDown(object sender, KeyEventArgs e)
         {
             if (e.KeyCode == Keys.Enter)
+            {
                 ActionFunc();
+
+                e.Handled = true;
+                e.SuppressKeyPress = true;
+            }
         }
 
         private void ActionFunc()
